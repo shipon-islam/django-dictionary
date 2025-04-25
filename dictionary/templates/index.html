@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mini Dictionary</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body>
+    <!-- Navbar -->
+    <header class="bg-purple-600 text-white p-4 text-center text-2xl font-bold">
+      <h1>My Dictionary</h1>
+    </header>
+
+    <!-- Dictionary Content -->
+    <main class="min-h-[85vh]">
+      <input
+        class="block w-fit mx-auto border mt-4 p-4 rounded-md"
+        type="text"
+        id="search-input"
+        placeholder="Search products..."
+      />
+      <ul id="results" class="list-disc mx-auto w-fit mt-4"></ul>
+      <div class="p-6 max-w-3xl mx-auto">
+        <h1 class="text-2xl font-bold mb-4">Dictionary</h1>
+        <div id="dict" class="divide-y divide-gray-200">
+          <!-- Add more words like this -->
+        </div>
+      </div>
+
+      <div
+        id="load-more-trigger"
+        class="mt-[600px] h-screen w-full"
+        style="height: 20px"
+      ></div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-50 text-center p-4 mt-6">
+      &copy; 2025 My Dictionary. All rights reserved.
+    </footer>
+    <script>
+      let currentPage = 1;
+      let hasNext = true;
+      let loading = false;
+
+      async function loadProducts() {
+        console.log("Loading products for page:", currentPage);
+        if (!hasNext || loading) {
+          return true;
+        }
+
+        loading = true;
+        console.log("Loading products for page:", currentPage);
+        const res = await fetch(
+          `/dictionary/filter/?limit=5&page=${currentPage}`
+        );
+        const data = await res.json();
+        console.log(data);
+        const container = document.getElementById("dict");
+        data.dictionaries.forEach((dictionary) => {
+          const a = document.createElement("a");
+          a.href = `/dictionary_by_id/${dictionary.id}`;
+          a.className = "block";
+          a.innerHTML = `<div class="flex py-2 gap-x-4">
+              <span class="font-semibold text-gray-800 capitalize"
+                >${dictionary.id}</span
+              >
+              <span class="font-semibold text-gray-800 capitalize"
+                >${dictionary.word}</span
+              >
+              <span class="text-gray-600 text-right capitalize"
+                >${dictionary.summary}</span
+              >
+            </div>`;
+
+          container.appendChild(a);
+        });
+
+        hasNext = data.has_next;
+        if (hasNext) {
+          currentPage += 1;
+        } else {
+          observer.unobserve(document.getElementById("load-more-trigger"));
+        }
+
+        loading = false;
+      }
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting && hasNext) {
+            loadProducts();
+          }
+        },
+        {
+          root: null,
+          rootMargin: "100px",
+          threshold: 0.1,
+        }
+      );
+
+      document.addEventListener("DOMContentLoaded", () => {
+        const trigger = document.getElementById("load-more-trigger");
+        if (trigger) {
+          observer.observe(trigger);
+          loadProducts(); // load first set
+        } else {
+          console.error("Trigger not found");
+        }
+      });
+
+      let debounceTimer;
+      document
+        .getElementById("search-input")
+        .addEventListener("input", function () {
+          clearTimeout(debounceTimer);
+          const query = this.value;
+
+          debounceTimer = setTimeout(() => {
+            fetch(`/dictionary/search/?q=${encodeURIComponent(query)}`)
+              .then((response) => response.json())
+              .then((data) => {
+                console.log(data);
+                const resultsList = document.getElementById("results");
+                resultsList.innerHTML = "";
+
+                data.forEach((item) => {
+                  const li = document.createElement("li");
+                  const atag = document.createElement("a");
+                  atag.href = `/dictionary/${item.id}/`;
+                  atag.textContent = item.word;
+                  li.appendChild(atag);
+                  resultsList.appendChild(li);
+                });
+              });
+          }, 300); // delay in milliseconds
+        });
+    </script>
+  </body>
+</html>
